@@ -112,15 +112,21 @@ class TPLinkManager:
         if not self.pushplus_token:
             return False
 
-        # 检查是否有新设备（之前未记录的设备）
+        # 检查是否有真正的新设备
         new_devices = []
         for device in current_devices:
             mac_address = device['mac_address']
-            if mac_address not in self.previous_devices:
+            device_name = device['name']
+
+            # 只有两种情况会触发通知：
+            # 1. 设备MAC地址从未被记录过（全新设备）
+            # 2. 设备名称仍然是MAC地址（未命名的设备）
+            if (mac_address not in self.previous_devices or
+                self.previous_devices[mac_address] == mac_address):
                 new_devices.append(device)
 
         if new_devices:
-            # 更新已知设备列表
+            # 更新已知设备列表（保存最新的设备名称）
             for device in current_devices:
                 self.previous_devices[device['mac_address']] = device['name']
 
