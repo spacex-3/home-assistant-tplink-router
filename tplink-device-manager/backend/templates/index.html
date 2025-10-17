@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TP-Link 设备管理器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .login-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 2fr 2fr 1fr 1fr;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #2980b9;
+        }
+
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        .btn-success {
+            background: #27ae60;
+        }
+
+        .btn-success:hover {
+            background: #229954;
+        }
+
+        .btn-warning {
+            background: #f39c12;
+        }
+
+        .btn-warning:hover {
+            background: #e67e22;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .control-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .devices-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .devices-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .devices-table th,
+        .devices-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .devices-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .devices-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .device-name {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+
+        .device-name-unnamed {
+            font-weight: 400;
+            color: #e67e22;
+            font-style: italic;
+        }
+
+        .device-mac {
+            font-family: monospace;
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+
+        .device-ip {
+            color: #27ae60;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 5px;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        .input-group .btn {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            margin: 50px auto;
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            color: #2c3e50;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+            font-size: 12px;
+        }
+
+        .success {
+            color: #27ae60;
+            font-weight: 500;
+        }
+
+        .error {
+            color: #e74c3c;
+            font-weight: 500;
+        }
+
+        .alert {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .switch {
+            position: relative;
+            width: 50px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #3498db;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            background: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+            display: inline-block;
+        }
+
+        .file-input-label:hover {
+            background: #2980b9;
+        }
+
+        /* 进度条样式 */
+        .progress-container {
+            display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .progress-title {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .progress-percentage {
+            font-weight: 500;
+            color: #3498db;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #f1f3f4;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: #3498db;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .progress-details {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+
+        .progress-status {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .progress-status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .progress-status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .progress-status.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .devices-table {
+                font-size: 12px;
+            }
+
+            .devices-table th,
+            .devices-table td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <div class="header">
+            <h1>🔧 TP-Link 设备管理器</h1>
+            <p>批量管理您的TP-Link路由器连接设备</p>
+        </div>
+
+        <!-- 登录区域 -->
+        <div class="login-section" id="loginSection">
+            <h3>登录路由器</h3>
+            <form id="loginForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="host">路由器地址</label>
+                        <input type="text" id="host" placeholder="192.168.1.1" value="192.168.1.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">登录密码</label>
+                        <input type="password" id="password" placeholder="请输入密码" required>
+                    </div>
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="btn" id="loginBtn">登录</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- 控制面板 -->
+        <div class="control-panel" id="controlPanel">
+            <div class="controls">
+                <span class="status connected" id="connectionStatus">已连接</span>
+                <button class="btn" onclick="refreshDevices()">🔄 刷新设备</button>
+                <button class="btn btn-success" onclick="exportDevices()">📥 导出CSV</button>
+                <div class="file-input-wrapper">
+                    <input type="file" id="csvFile" accept=".csv" onchange="importDevices()">
+                    <label for="csvFile" class="file-input-label">📤 导入CSV</label>
+                </div>
+
+                <!-- 筛选控件 -->
+                <select id="filterSelect" onchange="filterDevices()" style="padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                    <option value="all">📱 所有设备</option>
+                    <option value="unnamed">🔍 未命名设备</option>
+                    <option value="custom">✏️ 已命名设备</option>
+                </select>
+
+                <!-- 排序控件 -->
+                <select id="sortSelect" onchange="sortDevices()" style="padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                    <option value="name">按名称排序</option>
+                    <option value="mac">按MAC排序</option>
+                    <option value="ip">按IP排序</option>
+                    <option value="type">按类型排序</option>
+                </select>
+
+                <div class="auto-refresh">
+                    <label class="switch">
+                        <input type="checkbox" id="autoRefresh" onchange="toggleAutoRefresh()">
+                        <span class="slider"></span>
+                    </label>
+                    <span>自动刷新 (10秒)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 进度显示 -->
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-header">
+                <div class="progress-title">📤 批量更新设备名称</div>
+                <div class="progress-percentage" id="progressPercentage">0%</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-details" id="progressDetails">准备开始...</div>
+            <div class="progress-status" id="progressStatus" style="display: none;"></div>
+        </div>
+
+        <!-- 设备列表 -->
+        <div class="devices-section" id="devicesSection">
+            <h3>连接设备列表 <span id="deviceCount" style="color: #3498db; font-size: 16px;"></span></h3>
+            <table class="devices-table">
+                <thead>
+                    <tr>
+                        <th>设备名称</th>
+                        <th>MAC地址</th>
+                        <th>IP地址</th>
+                        <th>连接类型</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="devicesTableBody">
+                    <!-- 设备数据将在这里动态加载 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 结果模态框 -->
+    <div class="modal" id="resultsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>批量操作结果</h3>
+            </div>
+            <div id="resultsContent"></div>
+            <button class="btn" onclick="closeModal()" style="margin-top: 20px;">关闭</button>
+        </div>
+    </div>
+
+    <script>
+        let currentDevices = [];
+        let autoRefreshInterval = null;
+
+        // 登录功能
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const host = document.getElementById('host').value;
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('loginBtn');
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = '登录中...';
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ host, password })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showAlert('登录成功！', 'success');
+                    document.getElementById('loginSection').style.display = 'none';
+                    document.getElementById('controlPanel').style.display = 'block';
+                    document.getElementById('devicesSection').style.display = 'block';
+                    refreshDevices();
+                } else {
+                    let errorMsg = result.error || '未知错误';
+
+                    // 提供详细的错误信息和解决建议
+                    if (errorMsg.includes('401') || errorMsg.includes('Unauthorized')) {
+                        errorMsg = `登录失败：密码错误或需要使用加密密码
+
+💡 解决方案：
+1. 确认使用的是路由器Web登录密码（不是TP-Link ID密码）
+2. 某些路由器需要使用加密密码，获取方法：
+   - 浏览器打开路由器登录页面
+   - 输入密码后点击页面其他地方
+   - 按F12打开控制台，输入：document.getElementById('login-password').value
+   - 使用返回的加密字符串作为密码`;
+                    }
+
+                    showAlert(errorMsg, 'error');
+                }
+            } catch (error) {
+                showAlert('登录失败：' + error.message, 'error');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = '登录';
+            }
+        });
+
+        // 获取设备列表
+        async function refreshDevices() {
+            try {
+                const filterType = document.getElementById('filterSelect').value;
+                const sortBy = document.getElementById('sortSelect').value;
+
+                const response = await fetch(`/api/devices?filter=${filterType}&sort=${sortBy}`);
+                const result = await response.json();
+
+                if (response.ok) {
+                    currentDevices = result.devices;
+                    displayDevices(currentDevices);
+                } else {
+                    showAlert('获取设备列表失败：' + result.error, 'error');
+                }
+            } catch (error) {
+                showAlert('获取设备列表失败：' + error.message, 'error');
+            }
+        }
+
+        // 筛选设备
+        function filterDevices() {
+            refreshDevices();
+        }
+
+        // 排序设备
+        function sortDevices() {
+            refreshDevices();
+        }
+
+        // 显示设备列表
+        function displayDevices(devices) {
+            const tbody = document.getElementById('devicesTableBody');
+            const deviceCount = document.getElementById('deviceCount');
+            const filterType = document.getElementById('filterSelect').value;
+
+            // 更新设备总数和筛选信息
+            let filterText = '';
+            if (filterType === 'unnamed') {
+                filterText = ' (未命名)';
+            } else if (filterType === 'custom') {
+                filterText = ' (已命名)';
+            }
+            deviceCount.textContent = `(共 ${devices.length} 个设备${filterText})`;
+
+            if (devices.length === 0) {
+                let emptyMessage = '暂无连接设备';
+                if (filterType === 'unnamed') {
+                    emptyMessage = '✅ 恭喜！所有设备都已命名';
+                } else if (filterType === 'custom') {
+                    emptyMessage = '暂无已命名的设备';
+                }
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: #7f8c8d;">${emptyMessage}</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = devices.map(device => {
+                // 判断是否为未命名设备
+                const isUnnamed = device.name === device.mac_address;
+                const nameClass = isUnnamed ? 'device-name-unnamed' : 'device-name';
+                const nameIcon = isUnnamed ? '🔍' : '✏️';
+
+                return `
+                    <tr>
+                        <td class="${nameClass}">${nameIcon} ${device.name}</td>
+                        <td class="device-mac">${device.mac_address}</td>
+                        <td class="device-ip">${device.ip_address}</td>
+                        <td>${device.connection_type || 'N/A'}</td>
+                        <td>
+                            <div class="input-group">
+                                <input type="text" id="name-${device.mac_address}"
+                                       value="${device.name}" placeholder="输入新名称">
+                                <button class="btn btn-success" onclick="updateDeviceName('${device.mac_address}')">
+                                    修改
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 修改单个设备名称
+        async function updateDeviceName(macAddress) {
+            const newName = document.getElementById(`name-${macAddress}`).value.trim();
+
+            if (!newName) {
+                showAlert('请输入设备名称', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/device/${macAddress}/name`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name: newName })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showAlert('设备名称修改成功！', 'success');
+                    refreshDevices();
+                } else {
+                    showAlert('修改失败：' + result.error, 'error');
+                }
+            } catch (error) {
+                showAlert('修改失败：' + error.message, 'error');
+            }
+        }
+
+        // 导出设备列表
+        async function exportDevices() {
+            try {
+                const response = await fetch('/api/devices/export');
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = response.headers.get('Content-Disposition').split('filename=')[1].replace(/"/g, '');
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+
+                    showAlert('设备列表导出成功！', 'success');
+                } else {
+                    const result = await response.json();
+                    showAlert('导出失败：' + result.error, 'error');
+                }
+            } catch (error) {
+                showAlert('导出失败：' + error.message, 'error');
+            }
+        }
+
+        // 导入CSV文件
+        async function importDevices() {
+            const fileInput = document.getElementById('csvFile');
+            const file = fileInput.files[0];
+
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                // 显示进度条
+                showProgress();
+
+                const response = await fetch('/api/devices/import', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    updateProgress(0, result.summary?.updates_attempted || 0, '开始批量更新...');
+
+                    // 开始轮询进度
+                    const progressInterval = setInterval(async () => {
+                        try {
+                            const progressResponse = await fetch('/api/progress');
+                            const progressData = await progressResponse.json();
+
+                            updateProgress(
+                                progressData.current,
+                                progressData.total,
+                                `正在修改设备: ${progressData.latest_result?.new_name || '未知设备'}`,
+                                progressData.latest_result
+                            );
+
+                            if (progressData.completed) {
+                                clearInterval(progressInterval);
+
+                                if (progressData.error) {
+                                    showProgressError(progressData.error);
+                                } else {
+                                    showProgressSuccess();
+                                    // 获取最终结果
+                                    const finalResults = await fetch('/api/progress');
+                                    const finalData = await finalResults.json();
+
+                                    setTimeout(() => {
+                                        hideProgress();
+                                        showAlert('批量更新完成！', 'success');
+                                        showResults(finalData.results);
+                                        refreshDevices();
+                                    }, 2000);
+                                }
+                            }
+                        } catch (error) {
+                            clearInterval(progressInterval);
+                            showProgressError('获取进度失败：' + error.message);
+                            setTimeout(() => hideProgress(), 3000);
+                        }
+                    }, 1000); // 每秒更新一次进度
+
+                } else {
+                    hideProgress();
+                    showAlert('导入失败：' + result.error, 'error');
+                }
+            } catch (error) {
+                hideProgress();
+                showAlert('导入失败：' + error.message, 'error');
+            }
+
+            // 清空文件输入
+            fileInput.value = '';
+        }
+
+        // 显示进度条
+        function showProgress() {
+            document.getElementById('progressContainer').style.display = 'block';
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('progressPercentage').textContent = '0%';
+            document.getElementById('progressDetails').textContent = '准备开始...';
+            document.getElementById('progressStatus').style.display = 'none';
+        }
+
+        // 更新进度
+        function updateProgress(current, total, details, latestResult) {
+            const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
+            const progressFill = document.getElementById('progressFill');
+            const progressPercentage = document.getElementById('progressPercentage');
+            const progressDetails = document.getElementById('progressDetails');
+
+            progressFill.style.width = percentage + '%';
+            progressPercentage.textContent = percentage + '%';
+
+            if (details) {
+                if (latestResult) {
+                    const status = latestResult.success ? '✅' : '❌';
+                    const name = latestResult.new_name || '未知设备';
+                    progressDetails.innerHTML = `${status} 正在处理: ${name} (${current}/${total})`;
+                } else {
+                    progressDetails.textContent = `${details} (${current}/${total})`;
+                }
+            }
+        }
+
+        // 显示进度成功
+        function showProgressSuccess() {
+            const progressStatus = document.getElementById('progressStatus');
+            progressStatus.className = 'progress-status success';
+            progressStatus.textContent = '🎉 批量更新完成！';
+            progressStatus.style.display = 'block';
+        }
+
+        // 显示进度错误
+        function showProgressError(error) {
+            const progressStatus = document.getElementById('progressStatus');
+            progressStatus.className = 'progress-status error';
+            progressStatus.textContent = '❌ ' + error;
+            progressStatus.style.display = 'block';
+        }
+
+        // 隐藏进度条
+        function hideProgress() {
+            document.getElementById('progressContainer').style.display = 'none';
+        }
+
+        // 显示批量操作结果
+        function showResults(results) {
+            const modal = document.getElementById('resultsModal');
+            const content = document.getElementById('resultsContent');
+
+            const successCount = results.filter(r => r.success).length;
+            const errorCount = results.filter(r => !r.success).length;
+
+            let html = `
+                <p><strong>处理完成：</strong>成功 ${successCount} 个，失败 ${errorCount} 个</p>
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>MAC地址</th>
+                            <th>新名称</th>
+                            <th>结果</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            results.forEach(result => {
+                const statusClass = result.success ? 'success' : 'error';
+                const statusText = result.success ? '成功' : '失败';
+                html += `
+                    <tr>
+                        <td class="device-mac">${result.mac_address}</td>
+                        <td>${result.new_name}</td>
+                        <td class="${statusClass}">${statusText}</td>
+                    </tr>
+                `;
+                if (result.error) {
+                    html += `<tr><td colspan="3" class="error">${result.error}</td></tr>`;
+                }
+            });
+
+            html += '</tbody></table>';
+            content.innerHTML = html;
+            modal.style.display = 'block';
+        }
+
+        // 关闭模态框
+        function closeModal() {
+            document.getElementById('resultsModal').style.display = 'none';
+        }
+
+        // 切换自动刷新
+        function toggleAutoRefresh() {
+            const checkbox = document.getElementById('autoRefresh');
+
+            if (checkbox.checked) {
+                autoRefreshInterval = setInterval(refreshDevices, 10000);
+                showAlert('已开启自动刷新（10秒）', 'success');
+            } else {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                showAlert('已关闭自动刷新', 'success');
+            }
+        }
+
+        // 显示提示信息
+        function showAlert(message, type) {
+            // 移除现有的提示
+            const existingAlert = document.querySelector('.alert');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+
+            document.querySelector('.container').insertBefore(alert, document.querySelector('.container').firstChild);
+
+            // 3秒后自动移除
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.parentNode.removeChild(alert);
+                }
+            }, 3000);
+        }
+
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查是否有保存的登录信息
+            const savedHost = localStorage.getItem('tplink_host');
+            if (savedHost) {
+                document.getElementById('host').value = savedHost;
+            }
+
+            // 监听路由器地址变化
+            document.getElementById('host').addEventListener('change', function() {
+                localStorage.setItem('tplink_host', this.value);
+            });
+        });
+
+        // 点击模态框外部关闭
+        window.onclick = function(event) {
+            const modal = document.getElementById('resultsModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

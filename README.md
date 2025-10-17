@@ -1,264 +1,184 @@
-# Tp-Link router integration for Home Assistant (supports also Mercusys router)
-[![version](https://img.shields.io/github/manifest-json/v/AlexandrErohin/home-assistant-tplink-router?filename=custom_components%2Ftplink_router%2Fmanifest.json&color=slateblue)](https://github.com/AlexandrErohin/home-assistant-tplink-router/releases/latest)
-[![HACS](https://img.shields.io/badge/HACS-Default-orange.svg?logo=HomeAssistantCommunityStore&logoColor=white)](https://github.com/hacs/integration)
-[![Community Forum](https://img.shields.io/static/v1.svg?label=Community&message=Forum&color=41bdf5&logo=HomeAssistant&logoColor=white)](https://community.home-assistant.io/t/custom-component-tp-link-router-integration)
+# TP-Link Device Manager
 
-Home Assistant component for TP-Link and Mercusys routers administration based on the [TP-Link Router API](https://github.com/AlexandrErohin/TP-Link-Archer-C6U)
+A web-based TP-Link router device management tool with batch device renaming capabilities, CSV import/export functionality, and Docker deployment support.
 
-> [!WARNING]
-> Please temporarily disable the integration before accessing the router admin page. TP-Link admin page only allows one user at a time. This integration will log you out of the admin page every time it scans for updates (every 30s by default).
+## Features
 
-See [Supported routers](#supports)
+- 🔐 **Router Authentication** - Support for TP-Link router web login
+- 📱 **Device List Display** - Real-time display of all connected device information
+- ✏️ **Individual Device Renaming** - Direct device name editing in the interface
+- 📊 **Auto-refresh** - Optional 10-second auto-refresh for device list
+- 📥 **CSV Export** - Export current device list for editing
+- 📤 **CSV Import** - Batch import of modified device names
+- 🐳 **Docker Support** - Complete Docker deployment solution
 
-<img src="https://raw.githubusercontent.com/AlexandrErohin/home-assistant-tplink-router/master/docs/media/sensors.png" width="48%"> <img src="https://raw.githubusercontent.com/AlexandrErohin/home-assistant-tplink-router/master/docs/media/switches.png" width="48%">
+## Quick Start
 
-## Components
-### Events
- - tplink_router_new_device: Fired when a new device appears in your network
- - tplink_router_device_offline: Fired when a device becomes offline
- - tplink_router_device_online: Fired when a device becomes online
-### Switches
- - Router Reboot
- - Router data fetching - you may disable router data fetching before accessing the router, so it wont logging your out.
-If you forget to enable it back - it would be automatically enable after 20 minutes
- - 2.4Ghz host wifi Enable/Disable
- - 5Ghz host wifi Enable/Disable
- - 6Ghz host wifi Enable/Disable
- - 2.4Ghz guest wifi Enable/Disable
- - 5Ghz guest wifi Enable/Disable
- - 6Ghz guest wifi Enable/Disable
- - 2.4Ghz IoT wifi network Enable/Disable
- - 5Ghz IoT wifi network Enable/Disable
- - 6Ghz IoT wifi network Enable/Disable
+### Docker Deployment (Recommended)
 
-### Sensors
- - Total amount of wired clients
- - Total amount of IoT clients
- - Total amount of host wifi clients
- - Total amount of guest wifi clients
- - Total amount of all connected clients
- - CPU used
- - Memory used
- - Connection Type
-
-For LTE Routers
-- LTE Enabled
-- LTE Connection Status
-- LTE Network Type
-- LTE SIM Status
-- LTE Total Statistics
-- LTE Current RX Speed
-- LTE Current TX Speed
-- Unread SMS
-- LTE Signal Level
-- LTE RSRP
-- LTE RSRQ
-- LTE SNR
-- LTE ISP Name
-
-### Device Tracker
- - Track connected to router devices by MAC address with connection information
-
-To find your device - Go to `Developer tools` and search for your MAC address - you’ll find sensor like `device_tracker.YOUR_MAC` or `device_tracker.YOUR_PHONE_NAME`.
-
-It will also fire Home Assistant event when a device connects to router
-
-### Services
- - Send SMS message - Available only for MR LTE routers
-
-### Notification
-To receive notifications of appearing a new device in your network, or becoming device online\offline add following lines to your `configuration.yaml` file:
-```yaml
-automation:
-  - alias: "New network device"
-    trigger:
-      platform: event
-      event_type: tplink_router_new_device
-    action:
-      service: notify.mobile_app_<device_name>
-      data:
-        content: >-
-          New device appear {{ trigger.event.data.hostname }} with IP {{ trigger.event.data.ip_address }}
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd tplink-device-manager
 ```
 
-All available fields in `trigger.event.data`:
-- hostname
-- ip_address
-- mac_address
-- connection
-- band
-- packets_sent
-- packets_received
+2. Build and run with Docker:
+```bash
+# Build the image
+docker build -t tplink-device-manager .
 
-### Send SMS only for MR LTE routers
-To send SMS add following lines to your automation in yaml:
-```yaml
-...
-action:
-  - service: tplink_router.send_sms
-    data:
-      number: "+1234567890"
-      text: "Hello World"
-      device: pass_tplink_router_device_id_here
+# Run the container
+docker run -d -p 8080:8080 --name tplink-manager tplink-device-manager
 ```
 
-Device id is required because user may have several routers that could send SMS - so you need to select the needed router.
-You can get the ID from the URL when you visit the tplink device page
+Or use Docker Compose:
+```bash
+docker-compose up -d
+```
 
-## Installation
+3. Access `http://localhost:8080`
 
-### HACS (recommended)
+### Local Development
 
-Have [HACS](https://hacs.xyz/) installed, this will allow you to update easily.
+1. Install Python dependencies:
+```bash
+cd backend
+pip install -r requirements.txt
+```
 
-<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=AlexandrErohin&repository=home-assistant-tplink-router&category=integration" target="_blank"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
+2. Run the application:
+```bash
+python app.py
+```
 
-or go to <b>Hacs</b> and search for `TP-Link Router`.
+3. Access `http://localhost:8080`
 
-### Manual
+## Usage
 
-1. Locate the `custom_components` directory in your Home Assistant configuration directory. It may need to be created.
-2. Copy the `custom_components/tplink_router` directory into the `custom_components` directory.
-3. Restart Home Assistant.
+### 1. Router Login
+- Enter your router's internal IP address (e.g., 192.168.1.1)
+- Enter the login password
+- Click the "Login" button
 
-## Configuration
-TP-Link Router is configured via the GUI. See [the HA docs](https://www.home-assistant.io/getting-started/integration/) for more details.
+### 2. View Device List
+- After successful login, all connected devices are automatically displayed
+- Includes device name, MAC address, IP address, connection type, and more
 
-The default data is preset already.
+### 3. Rename Devices
+- **Individual renaming**: Edit device name directly in the device list, click "Rename" button
+- **Batch renaming**:
+  1. Click "Export CSV" to download current device list
+  2. Edit the "New Name" column in Excel or other tools
+  3. Click "Import CSV" to upload the modified file
+  4. System automatically processes in batch and displays results
 
-<img src="https://raw.githubusercontent.com/AlexandrErohin/home-assistant-tplink-router/master/docs/media/config_flow.png" width="48%">
+### 4. Auto-refresh
+- Enable "Auto-refresh" toggle to automatically update device list every 10 seconds
+- Disable to stop automatic refresh
 
-1. Go to the <b>Settings</b>-><b>Devices & services</b>.
-2. Click on `+ ADD INTEGRATION`, search for `TP-Link Router`.
-3. Fill Password.
-4. Click `SUBMIT`
+## CSV File Format
 
-NOTE!
-1. If you use `https` connection to your router you may get error `certificate verify failed: EE certificate key too weak`. To fix this - unset `Verify ssl`
-2. Use Local Password which is for Log In with Local Password. Login with TP-LINK ID doesnt work
+The exported CSV file contains the following columns:
+- MAC Address: Device MAC address (unique identifier)
+- Device Name: Current device name
+- IP Address: Current IP address of the device
+- Connection Type: Device connection type
+- New Name: **Please fill in the new name to change here**
 
-<img src="https://raw.githubusercontent.com/AlexandrErohin/home-assistant-tplink-router/master/docs/media/router.png" width="30%">
+## Docker Compose Configuration
 
-3. If you got error - `use web encrypted password instead. Check the documentation!` Read [web encrypted password](#encrypted_pass)
-4. The TP-Link Web Interface only supports upto 1 user logged in at a time (for security reasons, apparently). So you will be logged out from router web interface when the integration updates data
+```yaml
+version: '3.8'
+services:
+  tplink-manager:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - FLASK_ENV=production
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+```
 
-### <a id="encrypted_pass">Web Encrypted Password</a>
-If you got error - `use web encrypted password instead. Check the documentation!`
-1. Go to the login page of your router. (default: 192.168.0.1).
-2. Type in the password you use to login into the password field.
-3. Click somewhere else on the page so that the password field is not selected anymore.
-4. Open the JavaScript console of your browser (usually by pressing F12 and then clicking on "Console").
-5. Type `document.getElementById("login-password").value;`
-6. Copy the returned value as password and use it.
+## Environment Variables
 
-### Edit Configuration
-You may edit configuration data like:
-1. Router url
-2. Password
-3. Scan interval
-4. Verify https
+- `FLASK_ENV`: Flask environment mode (development/production)
+- `FLASK_DEBUG`: Enable debug mode (true/false)
+- `FLASK_PORT`: Port to run on (default: 8080)
 
-To do that:
+## API Endpoints
 
-1. Go to the <b>Settings</b>-><b>Devices & services</b>.
-2. Search for `TP-Link Router`, and click on it.
-3. Click on `CONFIGURE`
-4. Edit the options you need and click `SUBMIT`
+### Authentication
+- `POST /api/login` - Login to router
 
-## <a id="supports">Supported routers</a>
-- [TP-LINK routers](#tplink)
-- [MERCUSYS routers](#mercusys)
-### <a id="tplink">TP-LINK routers</a>
-- Archer A6 V2.0
-- Archer A7 V5
-- Archer A8 (1.0, 2.20)
-- Archer A9 V6
-- Archer A20 v1.0
-- Archer AX10 v1.0
-- Archer AX12 v1.0
-- Archer AX20 (v1.0, v3.0)
-- Archer AX21 (v1.20, v3.0)
-- Archer AX23 (v1.0, v1.2)
-- Archer AX50 v1.0
-- Archer AX53 v2
-- Archer AX55 (v1.0, V1.60, v4.0)
-- Archer AX72 V1
-- Archer AX73 V1
-- Archer AX75 V1
-- Archer AX90 V1.20
-- Archer AXE75 V1
-- Archer AXE5400 v1.0
-- Archer AXE16000
-- Archer AX1800
-- Archer AX3000 V1
-- Archer AX6000 V1
-- Archer AX11000 V1
-- Archer BE230 v1.0
-- Archer BE400 v1.0
-- Archer BE550 v1.0
-- Archer BE800 v1.0
-- Archer BE805 v1.0
-- Archer BE3600 1.6
-- Archer C1200 (v1.0, v2.0)
-- Archer C2300 (v1.0, v2.0)
-- Archer C6 (v2.0, v3.0, v3.20, 4.0)
-- Archer C6U v1.0
-- Archer C7 (v4.0, v5.0)
-- Archer C24 (1.0, 2.0)
-- Archer C60 v2.0
-- Archer C64 1.0
-- Archer C80 (1.0, 2.20)
-- Archer C5400X V1
-- Archer GX90 v1.0
-- Archer MR200 (v5, v5.3, v6.0)
-- Archer MR550 v1
-- Archer MR600 (v1, v2, v3)
-- Archer VR400 v3
-- Archer VR600 v3
-- Archer VR900v
-- Archer VR1200v v1
-- Archer VR2100v v1
-- Archer VX1800v v1.0
-- BE11000 2.0
-- Deco M4 2.0
-- Deco M4R 2.0
-- Deco M5 v3
-- Deco M9 Pro
-- Deco M9 Plus 1.0
-- Deco P7
-- Deco X20
-- Deco X50 v1.3
-- Deco X55 1.0
-- Deco X60 V3
-- Deco X90
-- Deco XE75 (v1.0, v2.0)
-- Deco XE75PRO (v3.0)
-- EX511 v2.0
-- HX510 v1.0
-- NX510v v1.0
-- TD-W9960 (v1, V1.20)
-- TL-MR100 v2.0
-- TL-MR105
-- TL-MR100-Outdoor v1.0
-- TL-MR110-Outdoor v1.0
-- TL-MR150 v2
-- TL-MR6400 (v5, v5.3)
-- TL-MR6500v
-- TL-WA1201 3.0
-- TL-WA3001 v1.0
-- TL-XDR3010 V2
-- TL-WDR3600 V1
-- VX420-G2h v1.1
-- XC220-G3v v2.30
-### <a id="mercusys">MERCUSYS routers</a>
-- MR47BE v1.0
-- MR50G 1.0
-- H60XR 1.0
-- H47BE 2.0
-- Halo H80X 1.0
-- Halo H3000x 1.0
+### Device Management
+- `GET /api/devices` - Get device list
+- `PUT /api/device/<mac_address>/name` - Rename single device
+- `POST /api/devices/batch-name` - Batch rename devices
 
-Please let me know if you have tested integration with any other model. Open an issue with info about router's model, hardware and firmware versions.
+### File Operations
+- `GET /api/devices/export` - Export device list as CSV
+- `POST /api/devices/import` - Import CSV for batch updates
+- `GET /api/progress` - Get batch operation progress
 
-## <a id="add_support">Adding Support For More Models</a>
-Guidelines [CONTRIBUTING.md](https://github.com/AlexandrErohin/TP-Link-Archer-C6U/blob/master/CONTRIBUTING.md)
+## Troubleshooting
+
+1. **Login Failed**
+   - Check if router IP address is correct
+   - Confirm password is the router's web login password (not TP-Link ID password)
+   - Check network connectivity
+
+2. **Cannot Get Device List**
+   - Confirm router model compatibility
+   - Check if blocked by router security policies
+   - Try re-login
+
+3. **Batch Operation Failed**
+   - Check if CSV file format is correct
+   - Confirm MAC address format (XX:XX:XX:XX:XX:XX)
+   - Check if new names contain special characters
+
+## Security Notes
+
+- Passwords are temporarily stored in memory only, not saved to disk
+- Recommended for use in trusted internal network environments
+- Regularly update router passwords for security
+
+## Technology Stack
+
+- **Backend**: Python Flask + requests
+- **Frontend**: HTML/CSS/JavaScript
+- **Deployment**: Docker + Docker Compose
+- **API**: RESTful API design
+
+## Docker Images
+
+The project is automatically built and pushed to:
+- **GitHub Container Registry**: `ghcr.io/lisankai93/tplink-device-manager`
+- **Docker Hub**: `lisankai93/tplink-device-manager`
+
+## Development
+
+### Building Docker Image
+```bash
+docker build -t tplink-device-manager .
+```
+
+### Testing
+```bash
+# Run the container in development mode
+docker run -p 8080:8080 --rm -v $(pwd):/app -w /app tplink-device-manager
+```
+
+## License
+
+MIT License
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
