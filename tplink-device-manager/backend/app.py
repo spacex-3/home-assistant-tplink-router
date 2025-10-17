@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, render_template, send_file
 from flask_cors import CORS
+import os
 import requests
 import json
 import csv
@@ -21,6 +22,9 @@ class TPLinkManager:
     def __init__(self):
         self.router = None
         self.logger = logging.getLogger(__name__)
+        self.pushplus_token = os.environ.get('PUSHPLUS_TOKEN', None)
+        self.devices_file = '/app/data/known_devices.json'  # 持久化设备记录文件
+        self.previous_devices = self._load_known_devices()  # 存储之前已知的设备，用于检测新设备
 
     def login(self, host, password):
         """登录路由器 - 使用与HA集成相同的方式"""
@@ -82,6 +86,108 @@ class TPLinkManager:
 
         except Exception as e:
             raise Exception(f"获取设备列表失败: {str(e)}")
+
+    def _load_known_devices(self):
+        """从文件加载已知的设备记录"""
+        try:
+            import json
+            if os.path.exists(self.devices_file):
+                with open(self.devices_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            self.logger.error(f"加载已知设备记录失败: {str(e)}")
+        return {}
+
+    def _save_known_devices(self):
+        """保存已知设备记录到文件"""
+        try:
+            import json
+            with open(self.devices_file, 'w', encoding='utf-8') as f:
+                json.dump(self.previous_devices, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            self.logger.error(f"保存已知设备记录失败: {str(e)}")
+
+    def check_and_notify_new_devices(self, current_devices):
+        """检查新设备并发送通知"""
+        if not self.pushplus_token:
+            return False
+
+        # 检查是否有新设备（之前未记录的设备）
+        new_devices = []
+        for device in current_devices:
+            mac_address = device['mac_address']
+            if mac_address not in self.previous_devices:
+                new_devices.append(device)
+
+        if new_devices:
+            # 更新已知设备列表
+            for device in current_devices:
+                self.previous_devices[device['mac_address']] = device['name']
+
+            # 保存到文件
+            self._save_known_devices()
+
+            # 发送通知
+            self._send_pushplus_notification(new_devices)
+            return True
+
+        return False
+
+    def _send_pushplus_notification(self, new_devices):
+        """发送 PushPlus 通知"""
+        try:
+            # 构建通知内容
+            title = "有新的设备连接到家庭网络了"
+
+            # 生成设备信息HTML
+            devices_html = ""
+            for device in new_devices:
+                device_name = device['name']
+                ip_address = device['ip_address']
+                mac_address = device['mac_address']
+
+                devices_html += f"""
+                <div style="margin: 10px 0; padding: 10px; border: 1px solid #eee; border-radius: 5px;">
+                    <strong>设备名称:</strong> {device_name}<br>
+                    <strong>IP地址:</strong> {ip_address}<br>
+                    <strong>MAC地址:</strong> {mac_address}
+                </div>
+                """
+
+            content = f"""
+            <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+                <h3 style="color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;">
+                    检测到新设备连接
+                </h3>
+                <p style="color: #666; margin-bottom: 20px;">
+                    <strong>请注意：</strong>以下设备是首次连接到家庭网络，请及时固定IP地址并修改设备名称。
+                </p>
+                {devices_html}
+                <p style="color: #888; font-size: 12px; margin-top: 20px;">
+                    -- TP-Link Device Manager 自动通知 --
+                </p>
+            </div>
+            """
+
+            # 发送 PushPlus 请求
+            pushplus_url = "https://www.pushplus.plus/send"
+            data = {
+                'token': self.pushplus_token,
+                'title': title,
+                'content': content,
+                'template': 'html'
+            }
+
+            response = requests.post(pushplus_url, json=data, timeout=10)
+            result = response.json()
+
+            if result.get('code') == 200:
+                self.logger.info(f"成功发送新设备通知，共 {len(new_devices)} 个新设备")
+            else:
+                self.logger.error(f"发送通知失败: {result.get('msg', '未知错误')}")
+
+        except Exception as e:
+            self.logger.error(f"发送通知时发生异常: {str(e)}")
 
     def set_device_name(self, mac_address, new_name):
         """修改设备名称 - 使用与HA集成相同的模式"""
@@ -230,6 +336,13 @@ def get_devices():
         sort_by = request.args.get('sort', 'name')       # name, mac, ip, type
 
         devices = tplink_manager.get_devices()
+
+        # 检查新设备并发送通知
+        try:
+            tplink_manager.check_and_notify_new_devices(devices)
+        except Exception as e:
+            # 通知失败不影响设备列表获取
+            logger.error(f"检查新设备时发生错误: {str(e)}")
 
         # 筛选设备
         if filter_type == 'unnamed':

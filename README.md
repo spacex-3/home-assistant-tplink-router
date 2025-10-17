@@ -11,6 +11,7 @@ A web-based TP-Link router device management tool with batch device renaming cap
 - 📥 **CSV Export** - Export current device list for editing
 - 📤 **CSV Import** - Batch import of modified device names
 - 🐳 **Docker Support** - Complete Docker deployment solution
+- 📢 **WeChat Notifications** - New device connection alerts via PushPlus
 
 ## Quick Start
 
@@ -102,8 +103,49 @@ services:
 ## Environment Variables
 
 - `FLASK_ENV`: Flask environment mode (development/production)
-- `FLASK_DEBUG`: Enable debug mode (true/false)
 - `FLASK_PORT`: Port to run on (default: 8080)
+- `PUSHPLUS_TOKEN`: PushPlus notification token for WeChat alerts (optional)
+
+## WeChat Notifications
+
+The application supports sending WeChat notifications when new devices connect to your network using PushPlus.
+
+### Setup Instructions
+
+1. **Get PushPlus Token**
+   - Visit [PushPlus](https://www.pushplus.plus/)
+   - Register and get your token
+
+2. **Configure Docker Compose**
+   ```yaml
+   environment:
+     - PUSHPLUS_TOKEN=your_actual_token_here
+   ```
+
+3. **Notification Content**
+   - **Title**: "有新的设备连接到家庭网络了"
+   - **Content**: Device name, IP address, and MAC address in HTML format
+   - **Template**: HTML formatted for better readability
+
+4. **Behavior**
+   - Notifications are only sent when devices connect for the first time
+   - Each device is tracked by its MAC address
+   - If no token is configured, no notifications will be sent
+   - Failed notifications don't affect device list functionality
+
+### Example Notification
+
+```
+Title: 有新的设备连接到家庭网络了
+
+Content:
+检测到新设备连接
+请注意：以下设备是首次连接到家庭网络，请及时固定IP地址并修改设备名称。
+
+设备名称: iPhone-123
+IP地址: 192.168.1.100
+MAC地址: AA:BB:CC:DD:EE:FF
+```
 
 ## API Endpoints
 
