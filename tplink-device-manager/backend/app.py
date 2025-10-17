@@ -24,7 +24,11 @@ class TPLinkManager:
         self.logger = logging.getLogger(__name__)
         self.pushplus_token = os.environ.get('PUSHPLUS_TOKEN', None)
         self.devices_file = '/app/data/known_devices.json'  # 持久化设备记录文件
+        self.credentials_file = '/app/data/credentials.json'  # 持久化登录凭据
         self.previous_devices = self._load_known_devices()  # 存储之前已知的设备，用于检测新设备
+        self.auto_monitor = os.environ.get('AUTO_MONITOR', 'false').lower() == 'true'
+        self.monitor_interval = int(os.environ.get('MONITOR_INTERVAL', 300))  # 默认5分钟
+        self.last_check_time = 0
 
     def login(self, host, password):
         """登录路由器 - 使用与HA集成相同的方式"""
@@ -51,10 +55,86 @@ class TPLinkManager:
 
             self.logger.info(f"成功连接到路由器: {firmware.model}")
 
+            # 保存登录凭据用于自动监控
+            if self.auto_monitor:
+                self._save_credentials(host, password)
+                self._start_auto_monitor()
+
             return True
 
         except Exception as e:
             raise Exception(f"登录失败: {str(e)}")
+
+    def _save_credentials(self, host, password):
+        """保存登录凭据"""
+        try:
+            credentials = {
+                'host': host,
+                'password': password,
+                'saved_at': datetime.now().isoformat()
+            }
+            with open(self.credentials_file, 'w', encoding='utf-8') as f:
+                json.dump(credentials, f, ensure_ascii=False, indent=2)
+            self.logger.info("登录凭据已保存")
+        except Exception as e:
+            self.logger.error(f"保存登录凭据失败: {str(e)}")
+
+    def _load_credentials(self):
+        """加载登录凭据"""
+        try:
+            if os.path.exists(self.credentials_file):
+                with open(self.credentials_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            self.logger.error(f"加载登录凭据失败: {str(e)}")
+        return None
+
+    def auto_login_and_monitor(self):
+        """自动登录并监控设备"""
+        if not self.auto_monitor:
+            return False
+
+        credentials = self._load_credentials()
+        if not credentials:
+            self.logger.error("没有找到保存的登录凭据")
+            return False
+
+        try:
+            # 自动登录
+            self.login(credentials['host'], credentials['password'])
+
+            # 获取当前设备
+            current_devices = self.get_devices()
+
+            # 检查新设备并发送通知
+            self.check_and_notify_new_devices(current_devices)
+
+            self.last_check_time = time.time()
+            self.logger.info(f"自动监控完成，当前设备数量: {len(current_devices)}")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"自动监控失败: {str(e)}")
+            return False
+
+    def _start_auto_monitor(self):
+        """启动自动监控（简化版本，实际可以使用线程）"""
+        if not self.auto_monitor:
+            return
+
+        self.logger.info(f"自动监控已启用，监控间隔: {self.monitor_interval}秒")
+
+        # 在实际应用中，这里可以启动后台线程
+        # 简化版本，暂时在前端轮询时检查
+        pass
+
+    def should_check_devices(self):
+        """检查是否应该进行设备检查"""
+        if not self.auto_monitor:
+            return False
+
+        current_time = time.time()
+        return (current_time - self.last_check_time) >= self.monitor_interval
 
     def get_devices(self):
         """获取连接的设备列表 - 使用与HA集成相同的方式"""
@@ -319,17 +399,72 @@ def login():
         data = request.json
         host = data.get('host')
         password = data.get('password')
+        enable_auto_monitor = data.get('enable_auto_monitor', False)
 
         if not host or not password:
             return jsonify({'error': '请提供主机地址和密码'}), 400
 
+        # 启用或禁用自动监控
+        tplink_manager.auto_monitor = enable_auto_monitor
+        if enable_auto_monitor:
+            tplink_manager.monitor_interval = int(os.environ.get('MONITOR_INTERVAL', 300))
+
         success = tplink_manager.login(host, password)
 
         if success:
-            return jsonify({'message': '登录成功'})
+            return jsonify({
+                'message': '登录成功',
+                'auto_monitor_enabled': enable_auto_monitor,
+                'monitor_interval': tplink_manager.monitor_interval if enable_auto_monitor else None
+            })
         else:
             return jsonify({'error': '登录失败'}), 400
 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/monitor/status', methods=['GET'])
+def get_monitor_status():
+    """获取自动监控状态"""
+    try:
+        return jsonify({
+            'auto_monitor': tplink_manager.auto_monitor,
+            'monitor_interval': tplink_manager.monitor_interval,
+            'last_check': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(tplink_manager.last_check_time)) if tplink_manager.last_check_time else None,
+            'should_check': tplink_manager.should_check_devices(),
+            'credentials_saved': os.path.exists(tplink_manager.credentials_file)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/monitor/trigger', methods=['POST'])
+def trigger_monitor():
+    """手动触发监控"""
+    try:
+        success = tplink_manager.auto_login_and_monitor()
+        if success:
+            return jsonify({'message': '监控触发成功'})
+        else:
+            return jsonify({'error': '监控触发失败'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/monitor', methods=['PUT'])
+def update_monitor_settings():
+    """更新监控设置"""
+    try:
+        data = request.json
+        enable = data.get('enable', tplink_manager.auto_monitor)
+        interval = data.get('interval', tplink_manager.monitor_interval)
+
+        tplink_manager.auto_monitor = enable
+        tplink_manager.monitor_interval = max(60, interval)  # 最小1分钟
+
+        return jsonify({
+            'auto_monitor': tplink_manager.auto_monitor,
+            'monitor_interval': tplink_manager.monitor_interval,
+            'message': '监控设置已更新'
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
@@ -341,14 +476,22 @@ def get_devices():
         filter_type = request.args.get('filter', 'all')  # all, unnamed, custom
         sort_by = request.args.get('sort', 'name')       # name, mac, ip, type
 
+        # 检查是否需要自动监控
+        if tplink_manager.should_check_devices() and tplink_manager.auto_monitor:
+            try:
+                tplink_manager.auto_login_and_monitor()
+            except Exception as e:
+                logger.error(f"自动监控失败: {str(e)}")
+
         devices = tplink_manager.get_devices()
 
-        # 检查新设备并发送通知
-        try:
-            tplink_manager.check_and_notify_new_devices(devices)
-        except Exception as e:
-            # 通知失败不影响设备列表获取
-            logger.error(f"检查新设备时发生错误: {str(e)}")
+        # 如果启用了自动监控，检查新设备并发送通知
+        if tplink_manager.auto_monitor:
+            try:
+                tplink_manager.check_and_notify_new_devices(devices)
+            except Exception as e:
+                # 通知失败不影响设备列表获取
+                logger.error(f"检查新设备时发生错误: {str(e)}")
 
         # 筛选设备
         if filter_type == 'unnamed':
@@ -368,7 +511,11 @@ def get_devices():
         elif sort_by == 'type':
             devices.sort(key=lambda x: x['connection_type'])
 
-        return jsonify({'devices': devices})
+        return jsonify({
+            'devices': devices,
+            'auto_monitor': tplink_manager.auto_monitor,
+            'last_check': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(tplink_manager.last_check_time)) if tplink_manager.last_check_time else None
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 

@@ -105,6 +105,56 @@ services:
 - `FLASK_ENV`: Flask environment mode (development/production)
 - `FLASK_PORT`: Port to run on (default: 8080)
 - `PUSHPLUS_TOKEN`: PushPlus notification token for WeChat alerts (optional)
+- `AUTO_MONITOR`: Enable automatic device monitoring (true/false, default: false)
+- `MONITOR_INTERVAL`: Monitoring interval in seconds (default: 300, minimum: 60)
+
+## Automatic Device Monitoring
+
+The application supports automatic device monitoring for seamless new device detection without manual intervention.
+
+### Features
+
+- 🔒 **Auto Login**: Remembers router credentials after first login
+- 🔄 **Periodic Checks**: Automatically checks for new devices at specified intervals
+- 📢 **Instant Notifications**: Sends WeChat notifications when new devices are detected
+- 🛡️ **Secure**: Credentials are stored locally in the container
+
+### Setup Instructions
+
+1. **Enable Automatic Monitoring**
+   ```yaml
+   environment:
+     - AUTO_MONITOR=true  # 启用自动监控
+     - MONITOR_INTERVAL=300  # 5分钟检查一次
+   ```
+
+2. **First Login with Monitoring**
+   ```json
+   {
+     "host": "192.168.1.1",
+     "password": "your_router_password",
+     "enable_auto_monitor": true
+   }
+   ```
+
+3. **Monitor Status**
+   - Check monitoring status: `GET /api/monitor/status`
+   - Manual trigger: `POST /api/monitor/trigger`
+   - Update settings: `PUT /api/monitor`
+
+### Behavior
+
+- When enabled, the system saves your router credentials securely
+- Automatically checks for new devices every 5 minutes (configurable)
+- Only sends notifications for truly new devices or unnamed devices
+- Failed monitoring attempts don't affect the web interface
+- Credentials persist across container restarts
+
+### Configuration Options
+
+- `AUTO_MONITOR=false`: Disable automatic monitoring (default)
+- `AUTO_MONITOR=true`: Enable automatic monitoring
+- `MONITOR_INTERVAL=300`: Check every 300 seconds (5 minutes minimum)
 
 ## WeChat Notifications
 
@@ -152,8 +202,13 @@ MAC地址: AA:BB:CC:DD:EE:FF
 ### Authentication
 - `POST /api/login` - Login to router
 
+### Automatic Monitoring
+- `GET /api/monitor/status` - Get monitoring status
+- `POST /api/monitor/trigger` - Manually trigger monitoring
+- `PUT /api/monitor` - Update monitoring settings
+
 ### Device Management
-- `GET /api/devices` - Get device list
+- `GET /api/devices` - Get device list (includes monitoring status)
 - `PUT /api/device/<mac_address>/name` - Rename single device
 - `POST /api/devices/batch-name` - Batch rename devices
 
