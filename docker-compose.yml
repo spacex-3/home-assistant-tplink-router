@@ -9,7 +9,7 @@ services:
     environment:
       - FLASK_ENV=production
       - FLASK_PORT=8080
-      - PUSHPLUS_TOKEN=9636cb461f9d4019b1c65f7e4f79fc1f  # 微信通知令牌，可选
+      - PUSHPLUS_TOKEN=token  # 微信通知令牌，可选
       - AUTO_MONITOR=false  # 启用自动监控 (true/false)
       - MONITOR_INTERVAL=300  # 监控间隔（秒），默认5分钟
     ports:
