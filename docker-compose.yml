@@ -2,7 +2,8 @@ version: '3.8'
 
 services:
   tplink-device-manager:
-    build: .
+    image: lisankai93/tplink-device-manager:latest
+    container_name: tplink-device-manager
     ports:
       - "8080:8080"
     environment:

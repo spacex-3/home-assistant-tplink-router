@@ -16,27 +16,17 @@ A web-based TP-Link router device management tool with batch device renaming cap
 
 ### Docker Deployment (Recommended)
 
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd tplink-device-manager
-```
-
-2. Build and run with Docker:
-```bash
-# Build the image
-docker build -t tplink-device-manager .
-
-# Run the container
-docker run -d -p 8080:8080 --name tplink-manager tplink-device-manager
-```
-
-Or use Docker Compose:
+#### Option 1: Using Docker Compose (Recommended)
 ```bash
 docker-compose up -d
 ```
+Access `http://localhost:8080`
 
-3. Access `http://localhost:8080`
+#### Option 2: Using Docker directly
+```bash
+docker run -d -p 8080:8080 --name tplink-device-manager lisankai93/tplink-device-manager:latest
+```
+Access `http://localhost:8080`
 
 ### Local Development
 
@@ -90,15 +80,23 @@ The exported CSV file contains the following columns:
 ```yaml
 version: '3.8'
 services:
-  tplink-manager:
-    build: .
+  tplink-device-manager:
+    image: lisankai93/tplink-device-manager:latest
+    container_name: tplink-device-manager
     ports:
       - "8080:8080"
     environment:
       - FLASK_ENV=production
+      - FLASK_PORT=8080
     volumes:
       - ./logs:/app/logs
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 ```
 
 ## Environment Variables
